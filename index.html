@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgriAI / CDD-AI - 3D Interactive Presentation (Adithya D)</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌱</text></svg>">
+  
+  <!-- External Libraries (Standard CDN - Runs without any local server!) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.4/dist/confetti.browser.min.js"></script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #040914;
+      --bg-card: rgba(10, 20, 38, 0.82);
+      --border-glow: rgba(16, 185, 129, 0.28);
+      --primary-emerald: #10b981;
+      --primary-glow: rgba(16, 185, 129, 0.4);
+      --cyan-neon: #06b6d4;
+      --cyan-glow: rgba(6, 182, 212, 0.4);
+      --amber-alert: #f59e0b;
+      --rose-danger: #f43f5e;
+      --violet-ai: #8b5cf6;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --font-sans: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      font-family: var(--font-sans);
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      position: relative;
+    }
+
+    /* 3D WebGL Background Canvas */
+    #webgl-canvas-container {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 1;
+      pointer-events: auto;
+    }
+
+    /* Ambient Radial Glow Gradients */
+    .bg-ambient-glow {
+      position: fixed;
+      width: 600px;
+      height: 600px;
+      border-radius: 50%;
+      filter: blur(140px);
+      pointer-events: none;
+      z-index: 0;
+      opacity: 0.2;
+    }
+    .glow-top-left {
+      top: -100px;
+      left: -100px;
+      background: var(--primary-emerald);
+    }
+    .glow-bottom-right {
+      bottom: -150px;
+      right: -150px;
+      background: var(--cyan-neon);
+    }
+
+    /* Presentation UI Overlay Wrapper */
+    .presentation-ui-wrapper {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 20px 28px;
+    }
+
+    /* TOP HEADER NAVIGATION BAR */
+    .presentation-header {
+      pointer-events: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(8, 16, 32, 0.85);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 18px;
+      padding: 10px 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon-box {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #10b981, #06b6d4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    .brand-info h1 {
+      font-size: 1.1rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      background: linear-gradient(to right, #f8fafc, #67e8f9);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .presenter-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.76rem;
+      color: var(--primary-emerald);
+      font-weight: 600;
+    }
+
+    /* Slide Progress Dots & Timeline */
+    .timeline-stepper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .step-dot {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.25s ease;
+    }
+
+    .step-dot:hover {
+      background: rgba(255, 255, 255, 0.15);
+      color: #fff;
+      transform: translateY(-2px);
+    }
+
+    .step-dot.active {
+      background: linear-gradient(135deg, var(--primary-emerald), var(--cyan-neon));
+      color: #040914;
+      font-weight: 800;
+      border-color: transparent;
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    /* Header Presentation Toolbar */
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .tool-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 0.82rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tool-btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+      transform: translateY(-1px);
+    }
+
+    .tool-btn.active {
+      background: rgba(16, 185, 129, 0.25);
+      border-color: var(--primary-emerald);
+      color: var(--primary-emerald);
+    }
+
+    /* MAIN CONTENT AREA (Left Slide Card + Right Student Avatar) */
+    .presentation-body {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      gap: 24px;
+      margin-bottom: 8px;
+      height: calc(100vh - 150px);
+    }
+
+    /* Left Slide Card */
+    .slide-card-container {
+      pointer-events: auto;
+      width: 530px;
+      max-height: 85%;
+      background: var(--bg-card);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 22px;
+      padding: 24px 28px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), inset 0 0 20px rgba(16, 185, 129, 0.05);
+      overflow-y: auto;
+      scrollbar-width: thin;
+      scrollbar-color: var(--primary-emerald) transparent;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .slide-tag-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .slide-tag {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--primary-emerald);
+      background: rgba(16, 185, 129, 0.12);
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .slide-badge {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      color: var(--cyan-neon);
+      background: rgba(6, 182, 212, 0.12);
+      padding: 4px 10px;
+      border-radius: 8px;
+    }
+
+    .slide-title {
+      font-size: 1.55rem;
+      font-weight: 800;
+      line-height: 1.25;
+      color: #fff;
+    }
+
+    .slide-subtitle {
+      font-size: 0.92rem;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+
+    /* Bullet Points Summary */
+    .slide-bullets {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .slide-bullets li {
+      font-size: 0.88rem;
+      line-height: 1.48;
+      color: #e2e8f0;
+      background: rgba(255, 255, 255, 0.03);
+      padding: 8px 12px;
+      border-radius: 10px;
+      border-left: 3px solid var(--primary-emerald);
+    }
+
+    /* Metrics Row */
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .metric-box {
+      background: rgba(15, 23, 42, 0.7);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 12px;
+      padding: 10px;
+      text-align: center;
+    }
+
+    .metric-val {
+      font-family: var(--font-mono);
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--cyan-neon);
+    }
+
+    .metric-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+      text-transform: uppercase;
+    }
+
+    /* RIGHT SIDE: STUDENT AVATAR NARRATOR HUD */
+    .avatar-narrator-hud {
+      pointer-events: auto;
+      width: 420px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: flex-end;
+    }
+
+    .speech-bubble {
+      background: rgba(10, 20, 38, 0.88);
+      backdrop-filter: blur(24px);
+      border: 1px solid var(--border-glow);
+      border-radius: 20px;
+      padding: 16px 20px;
+      box-shadow: 0 15px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(6, 182, 212, 0.15);
+      width: 100%;
+    }
+
+    .speech-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+
+    .presenter-tag {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--cyan-neon);
+    }
+
+    .avatar-emotion {
+      font-size: 0.66rem;
+      font-family: var(--font-mono);
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--primary-emerald);
+    }
+
+    .emotion-warning {
+      background: rgba(244, 63, 94, 0.2);
+      color: var(--rose-danger);
+    }
+    .emotion-analyzing {
+      background: rgba(139, 92, 246, 0.2);
+      color: var(--violet-ai);
+    }
+    .emotion-celebrating {
+      background: rgba(245, 158, 11, 0.2);
+      color: var(--amber-alert);
+    }
+
+    .subtitle-text {
+      font-size: 0.9rem;
+      line-height: 1.5;
+      color: #f1f5f9;
+      min-height: 55px;
+    }
+
+    /* Audio Waveform Animation */
+    .audio-waveform {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      height: 14px;
+    }
+
+    .audio-waveform span {
+      width: 3px;
+      height: 4px;
+      background: var(--cyan-neon);
+      border-radius: 2px;
+      transition: height 0.15s ease;
+    }
+
+    .audio-waveform.active span:nth-child(1) { animation: wave 0.6s infinite ease-in-out; }
+    .audio-waveform.active span:nth-child(2) { animation: wave 0.8s infinite ease-in-out 0.1s; }
+    .audio-waveform.active span:nth-child(3) { animation: wave 0.5s infinite ease-in-out 0.2s; }
+    .audio-waveform.active span:nth-child(4) { animation: wave 0.7s infinite ease-in-out 0.15s; }
+    .audio-waveform.active span:nth-child(5) { animation: wave 0.9s infinite ease-in-out 0.05s; }
+
+    @keyframes wave {
+      0%, 100% { height: 4px; }
+      50% { height: 14px; }
+    }
+
+    /* BOTTOM FOOTER */
+    .presentation-footer {
+      pointer-events: auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(8, 16, 32, 0.82);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 10px 20px;
+    }
+
+    .slide-nav-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .nav-btn {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 12px;
+      font-weight: 700;
+      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .nav-btn:hover {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: var(--primary-emerald);
+      transform: scale(1.02);
+    }
+
+    .nav-btn.primary {
+      background: linear-gradient(135deg, var(--primary-emerald), var(--cyan-neon));
+      color: #040914;
+      border: none;
+      box-shadow: 0 0 15px var(--primary-glow);
+    }
+
+    /* Shortcut Pills */
+    .shortcut-badge {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .key-pill {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2px 6px;
+      border-radius: 6px;
+      font-family: var(--font-mono);
+      font-size: 0.7rem;
+      color: #fff;
+    }
+
+    /* INTERACTIVE SIMULATOR SLIDER DRAWER (For Stage 4) */
+    .simulator-overlay-panel {
+      display: none;
+      pointer-events: auto;
+      position: fixed;
+      bottom: 80px;
+      left: 28px;
+      width: 530px;
+      background: rgba(8, 16, 32, 0.94);
+      backdrop-filter: blur(28px);
+      border: 1px solid var(--primary-emerald);
+      border-radius: 20px;
+      padding: 18px 22px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.85), 0 0 30px var(--primary-glow);
+      z-index: 20;
+    }
+
+    .simulator-overlay-panel.active {
+      display: block;
+      animation: slideUp 0.3s ease;
+    }
+
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .sim-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+
+    .sim-header h3 {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--primary-emerald);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Preset Buttons */
+    .preset-buttons-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 12px;
+    }
+
+    .preset-btn {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-main);
+      padding: 6px 6px;
+      border-radius: 8px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .preset-btn:hover {
+      background: rgba(6, 182, 212, 0.2);
+      border-color: var(--cyan-neon);
+    }
+
+    /* Slider Controls */
+    .sim-controls-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .control-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .control-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.8rem;
+      color: #cbd5e1;
+    }
+
+    .control-val {
+      font-family: var(--font-mono);
+      color: var(--cyan-neon);
+      font-weight: 700;
+    }
+
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.15);
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--primary-emerald);
+      cursor: pointer;
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    /* Disease Selector Pills */
+    .disease-select-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .disease-chip {
+      flex: 1;
+      font-size: 0.68rem;
+      font-weight: 600;
+      padding: 6px 4px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-muted);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s ease;
+    }
+
+    .disease-chip.active {
+      background: rgba(225, 29, 72, 0.2);
+      border-color: var(--rose-danger);
+      color: #fff;
+      box-shadow: 0 0 10px rgba(225, 29, 72, 0.4);
+    }
+
+    .disease-chip.active.healthy {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: var(--primary-emerald);
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    /* AI Live Decision Status Box */
+    .ai-decision-box {
+      margin-top: 12px;
+      background: rgba(15, 23, 42, 0.88);
+      border-radius: 12px;
+      padding: 10px 12px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .decision-status-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .pump-status-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.76rem;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+
+    .status-dot.active-pump {
+      background: #ef4444;
+      box-shadow: 0 0 10px #ef4444;
+      animation: blink 0.8s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .ai-recommendation-text {
+      font-size: 0.78rem;
+      color: #94a3b8;
+      margin-top: 5px;
+      line-height: 1.4;
+    }
+
+    /* CLASSROOM VIRTUAL LASER POINTER */
+    .classroom-laser-pointer {
+      position: fixed;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #ff0055;
+      box-shadow: 0 0 20px #ff0055, 0 0 40px #ff0055;
+      pointer-events: none;
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      animation: laserPulse 1s infinite alternate;
+    }
+
+    @keyframes laserPulse {
+      0% { transform: translate(-50%, -50%) scale(1); }
+      100% { transform: translate(-50%, -50%) scale(1.4); }
+    }
+
+    body.laser-mode-active {
+      cursor: crosshair;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 3D WebGL Canvas Layer -->
+  <div id="webgl-canvas-container"></div>
+
+  <!-- Ambient Glow Elements -->
+  <div class="bg-ambient-glow glow-top-left"></div>
+  <div class="bg-ambient-glow glow-bottom-right"></div>
+
+  <!-- Presentation HUD Overlay -->
+  <div class="presentation-ui-wrapper">
+    
+    <!-- TOP HEADER -->
+    <header class="presentation-header">
+      <div class="brand-section">
+        <div class="brand-icon-box">🌱</div>
+        <div class="brand-info">
+          <h1>AgriAI / CDD-AI</h1>
+          <span class="presenter-badge">
+            <span style="color: #67e8f9;">Presenter:</span> Adithya D &bull; CSE-AIML
+          </span>
+        </div>
+      </div>
+
+      <!-- Timeline Stepper (8 Stages) -->
+      <nav class="timeline-stepper" id="timeline-stepper">
+        <button class="step-dot active" data-stage="0" title="Overview">1</button>
+        <button class="step-dot" data-stage="1" title="Problem Statement">2</button>
+        <button class="step-dot" data-stage="2" title="IoT Hardware">3</button>
+        <button class="step-dot" data-stage="3" title="AI CNN Architecture">4</button>
+        <button class="step-dot" data-stage="4" title="Live 3D Simulator">5</button>
+        <button class="step-dot" data-stage="5" title="Scientific Novelty">6</button>
+        <button class="step-dot" data-stage="6" title="Future Scope">7</button>
+        <button class="step-dot" data-stage="7" title="Defense & Summary">8</button>
+      </nav>
+
+      <!-- Action Toolbar -->
+      <div class="header-actions">
+        <button class="tool-btn active" id="btn-voice-toggle" title="Toggle AI Voice Narration (V)">
+          <span id="voice-icon">🔊</span>
+          <span id="voice-label">Voice: ON</span>
+        </button>
+
+        <button class="tool-btn" id="btn-laser-toggle" title="Toggle Virtual Laser Pointer (L)">
+          <span>🔴</span>
+          <span>Laser</span>
+        </button>
+
+        <button class="tool-btn" id="btn-fullscreen-toggle" title="Fullscreen Presentation (F)">
+          <span>⛶</span>
+          <span>Full</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- MAIN BODY -->
+    <main class="presentation-body">
+      
+      <!-- Left Slide Card -->
+      <section class="slide-card-container" id="slide-card">
+        <div class="slide-tag-row">
+          <span class="slide-tag" id="slide-tag">Capstone Presentation</span>
+          <span class="slide-badge" id="slide-badge">AgriAI v1.0</span>
+        </div>
+
+        <h2 class="slide-title" id="slide-title">AgriAI: AI-Powered Smart Agriculture</h2>
+        <p class="slide-subtitle" id="slide-subtitle">Early Crop Disease, Heat Stress Detection & Intelligent Irrigation</p>
+
+        <ul class="slide-bullets" id="slide-bullets">
+          <!-- Dynamic Bullets Injected via JS -->
+        </ul>
+
+        <div class="metrics-grid" id="metrics-grid">
+          <!-- Dynamic Metrics Injected via JS -->
+        </div>
+      </section>
+
+      <!-- Right Student Avatar Narrator HUD -->
+      <aside class="avatar-narrator-hud">
+        <div class="speech-bubble">
+          <div class="speech-header">
+            <div class="presenter-tag">
+              <span>🤖</span>
+              <span>Adithya's AI Co-Presenter</span>
+            </div>
+            <div class="audio-waveform" id="audio-wave">
+              <span></span><span></span><span></span><span></span><span></span>
+            </div>
+            <span class="avatar-emotion" id="avatar-emotion">GREETING</span>
+          </div>
+
+          <p class="subtitle-text" id="subtitle-text">
+            Initializing AgriAI presentation engine...
+          </p>
+        </div>
+      </aside>
+
+    </main>
+
+    <!-- INTERACTIVE 3D SIMULATOR DRAWER (Stage 4) -->
+    <div class="simulator-overlay-panel" id="simulator-panel">
+      <div class="sim-header">
+        <h3>⚡ Real-Time IoT & AI Decision Lab</h3>
+        <span class="slide-badge">ESP32 &bull; Edge CNN</span>
+      </div>
+
+      <!-- Quick Preset Demo Scenarios -->
+      <div class="preset-buttons-row">
+        <button class="preset-btn" data-preset="normal">🟢 1. Normal</button>
+        <button class="preset-btn" data-preset="drought">🔴 2. Drought (Pump ON)</button>
+        <button class="preset-btn" data-preset="early_blight">🦠 3. Early Blight (94%)</button>
+        <button class="preset-btn" data-preset="late_blight">⚠️ 4. Late Blight</button>
+      </div>
+
+      <!-- Environmental Sliders -->
+      <div class="sim-controls-grid">
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>🌡️ Ambient Temperature</span>
+            <span class="control-val" id="val-temp">38°C</span>
+          </div>
+          <input type="range" id="slider-temp" min="15" max="50" value="38">
+        </div>
+
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>💧 Soil Moisture (Capacitive)</span>
+            <span class="control-val" id="val-moisture">22%</span>
+          </div>
+          <input type="range" id="slider-moisture" min="5" max="95" value="22">
+        </div>
+
+        <div class="control-item">
+          <div class="control-label-row">
+            <span>💨 Relative Humidity (DHT22)</span>
+            <span class="control-val" id="val-humidity">35%</span>
+          </div>
+          <input type="range" id="slider-humidity" min="15" max="95" value="35">
+        </div>
+      </div>
+
+      <!-- Leaf Image Pathology Selection -->
+      <div style="margin-top: 8px;">
+        <span style="font-size: 0.76rem; color: #94a3b8; font-weight: 600;">📷 Optical Leaf Pathology:</span>
+        <div class="disease-select-row">
+          <button class="disease-chip active" data-disease="early_blight">Early Blight</button>
+          <button class="disease-chip" data-disease="late_blight">Late Blight</button>
+          <button class="disease-chip" data-disease="leaf_mold">Leaf Mold</button>
+          <button class="disease-chip healthy" data-disease="healthy">Healthy</button>
+        </div>
+      </div>
+
+      <!-- Live AI Inference Decision Box -->
+      <div class="ai-decision-box">
+        <div class="decision-status-row">
+          <span style="font-size: 0.78rem; font-weight: 700; color: #fff;" id="sim-overall-risk">CRITICAL RISK</span>
+          <div class="pump-status-indicator">
+            <div class="status-dot active-pump" id="sim-pump-dot"></div>
+            <span id="sim-pump-label" style="color: #ef4444;">PUMP: ACTIVE (RELAY ON)</span>
+          </div>
+        </div>
+        <p class="ai-recommendation-text" id="sim-recommendation">
+          Irrigation ACTIVE. Detected Early Blight (94% confidence). Apply copper fungicide.
+        </p>
+      </div>
+    </div>
+
+    <!-- BOTTOM FOOTER -->
+    <footer class="presentation-footer">
+      <div class="shortcut-badge">
+        <span>Shortcuts:</span>
+        <span class="key-pill">Space</span> Next &bull;
+        <span class="key-pill">&larr;</span> Prev &bull;
+        <span class="key-pill">L</span> Laser &bull;
+        <span class="key-pill">V</span> Voice &bull;
+        <span class="key-pill">F</span> Fullscreen
+      </div>
+
+      <div class="slide-nav-buttons">
+        <button class="nav-btn" id="btn-prev-slide">&larr; Previous</button>
+        <button class="nav-btn primary" id="btn-next-slide">Next Stage &rarr;</button>
+      </div>
+    </footer>
+
+  </div>
+
+  <!-- Master Application Script (Pure JavaScript - 100% Self-Contained) -->
+  <script>
+    /* ==========================================================
+       DATA CATALOG
+    ========================================================== */
+    const PRESENTATION_STAGES = [
+      {
+        id: "stage-hero",
+        number: 0,
+        title: "AgriAI: AI-Powered Smart Agriculture",
+        subtitle: "Early Crop Disease, Heat Stress Detection & Intelligent Irrigation",
+        tag: "CSE-AIML Capstone Presentation",
+        presenter: "Adithya D",
+        avatarEmotion: "greeting",
+        speech: "Hello respected professors and fellow classmates! Welcome to my presentation on AgriAI: An AI-Powered Smart Agriculture System for Early Crop Disease, Heat Stress Detection, and Intelligent Irrigation. Let us explore how multi-modal Artificial Intelligence and IoT can revolutionize modern agricultural science!",
+        summary: [
+          "🌿 <strong>Multi-Modal AI Integration</strong>: Merging Computer Vision (CNN) with IoT environmental telemetry.",
+          "⚡ <strong>Proactive Risk Mitigation</strong>: Detecting microscopic pathogens and heat stress before irreversible crop damage.",
+          "💧 <strong>Closed-Loop Actuation</strong>: Real-time automated irrigation through ESP32 microcontroller and relay control."
+        ],
+        badge: "AgriAI v1.0",
+        metrics: [
+          { label: "Accuracy", val: "94.8%" },
+          { label: "Latency", val: "120ms" },
+          { label: "Water Saved", val: "38%" }
+        ]
+      },
+      {
+        id: "stage-problem",
+        number: 1,
+        title: "The Problem: Why Traditional Farming Fails",
+        subtitle: "The Critical Challenges Faced by Agricultural Scientists & Farmers",
+        tag: "Problem Statement",
+        presenter: "Adithya D",
+        avatarEmotion: "warning",
+        speech: "Agricultural scientists and farmers face devastating challenges today: unpredictable heat waves, severe water scarcity, rapid disease contagion like Early Blight, and delayed manual diagnosis. When signs become visible to human eyes, up to 40% of the yield is already lost!",
+        summary: [
+          "🌡️ <strong>Extreme Heat & Climate Volatility</strong>: Rapid evapotranspiration causes severe physiological stress.",
+          "💧 <strong>Inefficient Schedule-Based Irrigation</strong>: Leads to either chronic underwatering or wasteful overwatering.",
+          "🦠 <strong>Rapid Disease Outbreaks</strong>: Pathogens spread invisibly across hectares before symptoms appear.",
+          "⏳ <strong>Manual Inspection Bottleneck</strong>: Manual scouting across large fields is slow, subjective, and labor-intensive."
+        ],
+        badge: "Global Crisis",
+        metrics: [
+          { label: "Crop Loss", val: "40%" },
+          { label: "Water Wasted", val: "60%" },
+          { label: "Manual Delay", val: "5-7 Days" }
+        ]
+      },
+      {
+        id: "stage-iot-hardware",
+        number: 2,
+        title: "Multi-Modal IoT & Hardware Pipeline",
+        subtitle: "Edge Telemetry, Optical Capture & Microcontroller Layer",
+        tag: "System Architecture",
+        presenter: "Adithya D",
+        avatarEmotion: "explaining",
+        speech: "Here is our physical hardware and telemetry pipeline. An ESP32 microcontroller orchestrates high-precision DHT22 temperature and humidity sensors, a capacitive soil moisture probe, and an HD optical camera module. Telemetry is streamed over Wi-Fi and MQTT to our centralized AI inference engine.",
+        summary: [
+          "📷 <strong>HD Optical Camera</strong>: High-resolution leaf macro-photography for pattern and lesion extraction.",
+          "🌡️ <strong>DHT22 Sensor</strong>: Real-time atmospheric ambient temperature and relative humidity tracking.",
+          "💧 <strong>Capacitive Soil Probe</strong>: Corrosion-resistant volumetric water content (VWC) measurement.",
+          "⚡ <strong>ESP32 Edge Microcontroller</strong>: Ultra-low power Wi-Fi/Bluetooth MCU managing sensor polling and relay actuation."
+        ],
+        badge: "Hardware & Edge",
+        metrics: [
+          { label: "Sensor Poll", val: "1 Hz" },
+          { label: "ESP32 Clock", val: "240 MHz" },
+          { label: "Protocol", val: "MQTT / HTTP" }
+        ]
+      },
+      {
+        id: "stage-ai-models",
+        number: 3,
+        title: "The Dual-Core AI/ML Engine",
+        subtitle: "Computer Vision (CNN) + Machine Learning Stress Predictor",
+        tag: "AI Architecture",
+        presenter: "Adithya D",
+        avatarEmotion: "analyzing",
+        speech: "Our AI brain operates on a dual-core architecture. Module 1 utilizes a Deep Convolutional Neural Network with Transfer Learning like MobileNet and ResNet to classify leaf pathology with 94% confidence. Module 2 employs an ensemble Random Forest model to evaluate multi-factor environmental stress.",
+        summary: [
+          "🧠 <strong>Module 1 (Vision)</strong>: Deep CNN / Transfer Learning (MobileNetV3) detecting Early Blight, Late Blight, and Healthy tissue.",
+          "🌲 <strong>Module 2 (Stress ML)</strong>: Random Forest Regressor/Classifier fusing Temperature, Humidity, and Moisture into a Risk Index.",
+          "⚙️ <strong>Module 3 (Decision Engine)</strong>: Closed-loop inference engine computing optimal irrigation pulses and agricultural advisories."
+        ],
+        badge: "AI Deep Learning",
+        metrics: [
+          { label: "CNN Top-1 Acc", val: "94.2%" },
+          { label: "RF F1-Score", val: "0.96" },
+          { label: "Inference Time", val: "45ms" }
+        ]
+      },
+      {
+        id: "stage-simulator",
+        number: 4,
+        title: "Interactive 3D Classroom Demonstration",
+        subtitle: "Live Simulation: Telemetry Feedback & Automated Relay Pump Trigger",
+        tag: "Live Interactive Demo",
+        presenter: "Adithya D",
+        avatarEmotion: "demonstrating",
+        speech: "Now let's witness the live system in action! You can interactively manipulate the environmental sliders below. Watch how low soil moisture and elevated temperature immediately trigger the AI risk alert and turn on the 3D water pump relay!",
+        summary: [
+          "🟢 <strong>Demo 1 (Normal Conditions)</strong>: Moisture at 65%, Temp at 28°C -> Crop status Healthy, Pump stands by.",
+          "🔴 <strong>Demo 2 (Drought & Heat Stress)</strong>: Moisture at 18%, Temp at 38°C -> Critical risk detected, ESP32 triggers Relay -> Pump ON!",
+          "🦠 <strong>Demo 3 (Leaf Pathology)</strong>: Camera uploads diseased leaf -> CNN detects Early Blight with 94% confidence."
+        ],
+        badge: "Live Interactive Lab",
+        metrics: [
+          { label: "Pump State", val: "AUTOMATED" },
+          { label: "Relay Delay", val: "< 50ms" },
+          { label: "Safety Cutoff", val: "Enabled" }
+        ]
+      },
+      {
+        id: "stage-novelty",
+        number: 5,
+        title: "Scientific Novelty: Why AgriAI Stands Out",
+        subtitle: "Beyond Basic Classifiers: End-to-End Decision Support & Automation",
+        tag: "Technical Innovation",
+        presenter: "Adithya D",
+        avatarEmotion: "explaining",
+        speech: "Many standard student projects only classify a single static photo. AgriAI goes much further: we fuse real-time environmental context with leaf imagery to predict impending physiological collapse and automatically actuate physical irrigation!",
+        summary: [
+          "❌ <strong>Standard Project</strong>: Single leaf photo -> Disease name label (No action, no context).",
+          "✅ <strong>AgriAI Multi-Modal</strong>: Image + Temperature + Humidity + Moisture -> Comprehensive Health Diagnosis -> Automated Physical Actuation.",
+          "🛡️ <strong>Realistic Positioning</strong>: Designed as an expert Decision-Support System for scientists and farmers, not a blind replacement."
+        ],
+        badge: "Comparative Matrix",
+        metrics: [
+          { label: "Input Modes", val: "Multi-Modal (4+)" },
+          { label: "Actionability", val: "Real-time" },
+          { label: "Scalability", val: "IoT Ready" }
+        ]
+      },
+      {
+        id: "stage-future",
+        number: 6,
+        title: "Future Scope: Autonomous Drones & Edge AI",
+        subtitle: "Expanding to Aerial Farm Scans, Multispectral Imaging & Voice AI",
+        tag: "Roadmap & Scaling",
+        presenter: "Adithya D",
+        avatarEmotion: "analyzing",
+        speech: "In the next phase, AgriAI scales to enterprise agriculture! Autonomous agricultural drones equipped with multispectral cameras can survey hundreds of hectares, generating real-time GIS heat maps, while multilingual voice assistants empower farmers in local languages.",
+        summary: [
+          "🚁 <strong>Autonomous UAV Drones</strong>: High-altitude thermal & NDVI scanning to map plantation stress zones.",
+          "🛰️ <strong>Satellite GIS Integration</strong>: Sentinel-2 spectral indices for macro-climate and yield forecasting.",
+          "🗣️ <strong>Multilingual Voice Assistant</strong>: Natural language dialogue in local regional languages for accessible field advice.",
+          "📱 <strong>Edge TinyML Deployment</strong>: Running quantized neural networks directly on microcontrollers without cloud latency."
+        ],
+        badge: "Next Gen Roadmap",
+        metrics: [
+          { label: "Drone Coverage", val: "100 Ha/hr" },
+          { label: "Edge Model Size", val: "2.4 MB" },
+          { label: "Languages", val: "12+" }
+        ]
+      },
+      {
+        id: "stage-conclusion",
+        number: 7,
+        title: "Project Summary & Defense Points",
+        subtitle: "Key Takeaways, Academic Defense & Q&A Session",
+        tag: "Final Defense",
+        presenter: "Adithya D",
+        avatarEmotion: "celebrating",
+        speech: "To conclude, AgriAI demonstrates how Computer Vision, Machine Learning, IoT sensors, and automated actuation can unite to solve fundamental challenges in agriculture. Thank you professors and classmates! I am now ready for questions.",
+        summary: [
+          "🎯 <strong>Objective Delivered</strong>: Functional end-to-end multi-modal crop disease and stress monitoring system.",
+          "🔬 <strong>Academic Rigor</strong>: Transparent acknowledgment of dataset bias, sensor noise calibration, and field test prerequisites.",
+          "💡 <strong>Key Quote for Judges</strong>: 'AgriAI is a predictive decision-support system that empowers scientists with actionable insights before crop damage occurs.'"
+        ],
+        badge: "Defense Ready",
+        metrics: [
+          { label: "Project Status", val: "Prototype Ready" },
+          { label: "Field Readiness", val: "Phase 1 Tested" },
+          { label: "Presenter", val: "Adithya D" }
+        ]
+      }
+    ];
+
+    const LEAF_DISEASE_SAMPLES = [
+      {
+        id: "early_blight",
+        name: "Tomato Early Blight (Alternaria solani)",
+        confidence: 94.2,
+        action: "Apply Copper Fungicide or Mancozeb; improve air circulation and avoid overhead watering."
+      },
+      {
+        id: "late_blight",
+        name: "Tomato Late Blight (Phytophthora infestans)",
+        confidence: 91.8,
+        action: "Prune infected foliage immediately; apply systemic fungicide; isolate affected rows."
+      },
+      {
+        id: "leaf_mold",
+        name: "Tomato Leaf Mold (Passalora fulva)",
+        confidence: 89.5,
+        action: "Reduce greenhouse relative humidity below 85%; increase spacing between plants."
+      },
+      {
+        id: "healthy",
+        name: "Healthy Tomato Plant",
+        confidence: 98.4,
+        action: "Maintain balanced N-P-K nutrient feeding and automated scheduled soil moisture monitoring."
+      }
+    ];
+
+    /* ==========================================================
+       THREE.JS SCENE & STAGES SETUP
+    ========================================================== */
+    class AgriAIScene {
+      constructor(container) {
+        this.container = container;
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+
+        this.scene = new THREE.Scene();
+        this.scene.fog = new THREE.FogExp2(0x040914, 0.035);
+
+        this.camera = new THREE.PerspectiveCamera(45, this.width / this.height, 0.1, 1000);
+        this.camera.position.set(0, 1.5, 8);
+
+        this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        this.renderer.setSize(this.width, this.height);
+        this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        this.container.appendChild(this.renderer.domElement);
+
+        this.clock = new THREE.Clock();
+        this.updatables = [];
+
+        this.initLights();
+        this.initBackgroundParticles();
+        this.initStages();
+        this.initAvatar();
+
+        window.addEventListener('resize', this.onResize.bind(this));
+      }
+
+      initLights() {
+        const ambient = new THREE.AmbientLight(0xdcfce7, 0.65);
+        this.scene.add(ambient);
+
+        const keyLight = new THREE.DirectionalLight(0x22c55e, 1.8);
+        keyLight.position.set(5, 12, 7);
+        this.scene.add(keyLight);
+
+        const cyanLight = new THREE.PointLight(0x06b6d4, 2.5, 25);
+        cyanLight.position.set(-6, 4, 3);
+        this.scene.add(cyanLight);
+
+        const violetLight = new THREE.PointLight(0x8b5cf6, 2.0, 30);
+        violetLight.position.set(6, -2, -4);
+        this.scene.add(violetLight);
+      }
+
+      initBackgroundParticles() {
+        const count = 400;
+        const geo = new THREE.BufferGeometry();
+        const positions = new Float32Array(count * 3);
+        const colors = new Float32Array(count * 3);
+
+        const colorPalette = [
+          new THREE.Color(0x10b981),
+          new THREE.Color(0x06b6d4),
+          new THREE.Color(0x84cc16)
+        ];
+
+        for (let i = 0; i < count; i++) {
+          positions[i * 3] = (Math.random() - 0.5) * 35;
+          positions[i * 3 + 1] = (Math.random() - 0.5) * 25;
+          positions[i * 3 + 2] = (Math.random() - 0.5) * 35;
+
+          const col = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+          colors[i * 3] = col.r;
+          colors[i * 3 + 1] = col.g;
+          colors[i * 3 + 2] = col.b;
+        }
+
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+        const mat = new THREE.PointsMaterial({
+          size: 0.12,
+          vertexColors: true,
+          transparent: true,
+          opacity: 0.75,
+          blending: THREE.AdditiveBlending
+        });
+
+        this.particles = new THREE.Points(geo, mat);
+        this.scene.add(this.particles);
+
+        this.updatables.push((delta, elapsed) => {
+          this.particles.rotation.y = elapsed * 0.03;
+          this.particles.rotation.x = Math.sin(elapsed * 0.02) * 0.05;
+        });
+      }
+
+      initAvatar() {
+        this.avatarGroup = new THREE.Group();
+        this.avatarGroup.position.set(2.8, -0.2, 2.5);
+        this.avatarGroup.scale.set(0.9, 0.9, 0.9);
+
+        // Materials
+        this.avatarMat = new THREE.MeshPhysicalMaterial({
+          color: 0x06b6d4,
+          emissive: 0x0284c7,
+          emissiveIntensity: 0.6,
+          roughness: 0.1,
+          metalness: 0.2,
+          transparent: true,
+          opacity: 0.88
+        });
+
+        this.accentMat = new THREE.MeshStandardMaterial({
+          color: 0x10b981,
+          emissive: 0x059669,
+          emissiveIntensity: 0.8,
+          roughness: 0.2
+        });
+
+        // 1. Pedestal Base Rings
+        const baseRingGeo = new THREE.TorusGeometry(0.7, 0.03, 16, 64);
+        this.avatarBaseRing = new THREE.Mesh(baseRingGeo, new THREE.MeshBasicMaterial({ color: 0x06b6d4, wireframe: true }));
+        this.avatarBaseRing.rotation.x = Math.PI / 2;
+        this.avatarBaseRing.position.y = -1.2;
+        this.avatarGroup.add(this.avatarBaseRing);
+
+        // 2. Avatar Body Container
+        this.avatarBody = new THREE.Group();
+        this.avatarGroup.add(this.avatarBody);
+
+        // Torso
+        const torsoGeo = new THREE.CylinderGeometry(0.35, 0.28, 0.75, 16);
+        const torso = new THREE.Mesh(torsoGeo, this.avatarMat);
+        torso.position.y = -0.4;
+        this.avatarBody.add(torso);
+
+        // ID Badge
+        const badge = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.16, 0.04), this.accentMat);
+        badge.position.set(0.12, -0.3, 0.28);
+        badge.rotation.y = -0.2;
+        this.avatarBody.add(badge);
+
+        // Head Group
+        this.avatarHead = new THREE.Group();
+        this.avatarHead.position.set(0, 0.2, 0);
+
+        const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.38, 32, 32), this.avatarMat);
+        headMesh.position.y = 0.25;
+        this.avatarHead.add(headMesh);
+
+        // Smart Visor
+        this.visor = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.12, 0.2), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+        this.visor.position.set(0, 0.28, 0.28);
+        this.avatarHead.add(this.visor);
+
+        // Graduation Cap
+        const capGroup = new THREE.Group();
+        capGroup.position.set(0, 0.58, 0);
+        const capBase = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.34, 0.12, 24), this.accentMat);
+        capGroup.add(capBase);
+
+        const capTop = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.04, 0.72), this.accentMat);
+        capTop.position.y = 0.08;
+        capTop.rotation.y = Math.PI / 4;
+        capGroup.add(capTop);
+
+        const tassel = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.3, 8), new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xd97706 }));
+        tassel.position.set(0.24, 0.02, 0.24);
+        tassel.rotation.z = 0.3;
+        capGroup.add(tassel);
+        this.avatarTassel = tassel;
+
+        this.avatarHead.add(capGroup);
+        this.avatarBody.add(this.avatarHead);
+
+        // Arms
+        this.leftArm = new THREE.Group();
+        this.leftArm.position.set(-0.42, -0.15, 0);
+        const leftArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.45, 12), this.avatarMat);
+        leftArmMesh.position.y = -0.22;
+        this.leftArm.add(leftArmMesh);
+        this.avatarBody.add(this.leftArm);
+
+        this.rightArm = new THREE.Group();
+        this.rightArm.position.set(0.42, -0.15, 0);
+        const rightArmMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.45, 12), this.avatarMat);
+        rightArmMesh.position.y = -0.22;
+        this.rightArm.add(rightArmMesh);
+        this.avatarBody.add(this.rightArm);
+
+        this.scene.add(this.avatarGroup);
+
+        this.isSpeaking = false;
+        this.talkCycle = 0;
+
+        this.updatables.push((delta, elapsed) => {
+          this.avatarBaseRing.rotation.z = elapsed * 1.5;
+          this.avatarBody.position.y = Math.sin(elapsed * 2.5) * 0.08;
+          this.avatarTassel.rotation.x = Math.sin(elapsed * 3) * 0.1;
+
+          if (this.isSpeaking) {
+            this.talkCycle += delta * 12;
+            this.avatarHead.position.y = 0.2 + Math.sin(this.talkCycle) * 0.025;
+          } else {
+            this.avatarHead.position.y = 0.2;
+          }
+        });
+      }
+
+      setAvatarEmotion(emotion) {
+        if (typeof gsap === 'undefined') return;
+
+        gsap.killTweensOf(this.avatarHead.rotation);
+        gsap.killTweensOf(this.rightArm.rotation);
+        gsap.killTweensOf(this.leftArm.rotation);
+
+        switch (emotion) {
+          case "greeting":
+            this.avatarMat.color.setHex(0x06b6d4);
+            this.visor.material.color.setHex(0x38bdf8);
+            gsap.to(this.rightArm.rotation, { z: -2.1, x: 0.4, duration: 0.6 });
+            gsap.to(this.leftArm.rotation, { z: 0.2, duration: 0.6 });
+            gsap.to(this.avatarHead.rotation, { z: -0.15, duration: 0.5 });
+            break;
+          case "warning":
+            this.avatarMat.color.setHex(0xf43f5e);
+            this.visor.material.color.setHex(0xfb7185);
+            gsap.to(this.rightArm.rotation, { z: -0.8, x: 0.8, duration: 0.5 });
+            gsap.to(this.leftArm.rotation, { z: 0.8, x: 0.8, duration: 0.5 });
+            break;
+          case "explaining":
+            this.avatarMat.color.setHex(0x10b981);
+            this.visor.material.color.setHex(0x34d399);
+            gsap.to(this.leftArm.rotation, { z: 1.2, y: 0.4, x: -0.5, duration: 0.6 });
+            gsap.to(this.rightArm.rotation, { z: -0.3, duration: 0.6 });
+            break;
+          case "analyzing":
+            this.avatarMat.color.setHex(0x8b5cf6);
+            this.visor.material.color.setHex(0xa78bfa);
+            gsap.to(this.rightArm.rotation, { z: -1.6, x: 1.2, duration: 0.6 });
+            gsap.to(this.leftArm.rotation, { z: 0.6, duration: 0.6 });
+            break;
+          case "demonstrating":
+            this.avatarMat.color.setHex(0x06b6d4);
+            this.visor.material.color.setHex(0x38bdf8);
+            gsap.to(this.leftArm.rotation, { z: 1.4, x: 0.6, duration: 0.6 });
+            gsap.to(this.rightArm.rotation, { z: -1.4, x: 0.6, duration: 0.6 });
+            break;
+          case "celebrating":
+            this.avatarMat.color.setHex(0xf59e0b);
+            this.visor.material.color.setHex(0xfde047);
+            gsap.to(this.leftArm.rotation, { z: 2.4, duration: 0.6, ease: "back.out(1.7)" });
+            gsap.to(this.rightArm.rotation, { z: -2.4, duration: 0.6, ease: "back.out(1.7)" });
+            break;
+        }
+      }
+
+      initStages() {
+        this.stageGroups = [];
+
+        // 0. Hero Stage (Globe & Neural Arcs)
+        const stage0 = new THREE.Group();
+        const globe = new THREE.Mesh(new THREE.SphereGeometry(1.6, 28, 28), new THREE.MeshStandardMaterial({ color: 0x065f46, emissive: 0x047857, wireframe: true, transparent: true, opacity: 0.7 }));
+        stage0.add(globe);
+        const core = new THREE.Mesh(new THREE.SphereGeometry(1.2, 20, 20), new THREE.MeshBasicMaterial({ color: 0x10b981, transparent: true, opacity: 0.35 }));
+        stage0.add(core);
+        const arcs = new THREE.Group();
+        for (let i = 0; i < 3; i++) {
+          const ring = new THREE.Mesh(new THREE.TorusGeometry(2.1 + i * 0.3, 0.02, 16, 80), new THREE.MeshBasicMaterial({ color: i % 2 === 0 ? 0x06b6d4 : 0x10b981 }));
+          ring.rotation.x = Math.random() * Math.PI;
+          arcs.add(ring);
+        }
+        stage0.add(arcs);
+        this.stageGroups.push(stage0);
+
+        // 1. Crisis Stage (Wilting Stressed Crop)
+        const stage1 = new THREE.Group();
+        const drySoil = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 2.0, 0.4, 24), new THREE.MeshStandardMaterial({ color: 0x78350f }));
+        drySoil.position.y = -1.2;
+        stage1.add(drySoil);
+        const wiltStem = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.1, 2.2, 12), new THREE.MeshStandardMaterial({ color: 0xa16207 }));
+        wiltStem.rotation.z = -0.4;
+        wiltStem.position.set(0.3, -0.2, 0);
+        stage1.add(wiltStem);
+        const beacon = new THREE.Mesh(new THREE.OctahedronGeometry(0.35, 0), new THREE.MeshStandardMaterial({ color: 0xe11d48, emissive: 0xbe123c, emissiveIntensity: 1.2 }));
+        beacon.position.set(0, 1.6, 0);
+        stage1.add(beacon);
+        this.stageGroups.push(stage1);
+
+        // 2. IoT Hardware Stage
+        const stage2 = new THREE.Group();
+        const esp = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 2.0), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+        stage2.add(esp);
+        const rf = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.12, 0.9), new THREE.MeshStandardMaterial({ color: 0x94a3b8, metalness: 0.9 }));
+        rf.position.set(0, 0.08, -0.3);
+        stage2.add(rf);
+        const dht = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.9, 0.35), new THREE.MeshStandardMaterial({ color: 0xf8fafc }));
+        dht.position.set(-2.0, 0.8, 0.3);
+        stage2.add(dht);
+        const probe = new THREE.Mesh(new THREE.BoxGeometry(0.4, 1.4, 0.06), new THREE.MeshStandardMaterial({ color: 0x15803d }));
+        probe.position.set(-1.8, -1.0, 0.5);
+        stage2.add(probe);
+        const cam = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.7, 0.3), new THREE.MeshStandardMaterial({ color: 0x166534 }));
+        cam.position.set(1.9, 1.0, 0.2);
+        stage2.add(cam);
+        const relay = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.6), new THREE.MeshStandardMaterial({ color: 0x2563eb }));
+        relay.position.set(1.9, -0.9, 0.4);
+        stage2.add(relay);
+        this.stageGroups.push(stage2);
+
+        // 3. AI Deep Learning CNN Stage
+        const stage3 = new THREE.Group();
+        const inPlane = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 1.2), new THREE.MeshStandardMaterial({ color: 0x10b981, side: THREE.DoubleSide }));
+        inPlane.position.set(-2.4, 0, 0);
+        stage3.add(inPlane);
+        const conv = new THREE.Group();
+        for (let f = 0; f < 3; f++) {
+          const sl = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.9), new THREE.MeshStandardMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.7, side: THREE.DoubleSide }));
+          sl.position.z = (f - 1) * 0.35;
+          conv.add(sl);
+        }
+        conv.position.set(-0.8, 0, 0);
+        stage3.add(conv);
+        const dense = new THREE.Group();
+        for (let d = 0; d < 5; d++) {
+          const dn = new THREE.Mesh(new THREE.SphereGeometry(0.12, 12, 12), new THREE.MeshStandardMaterial({ color: 0x8b5cf6, emissive: 0x6d28d9 }));
+          dn.position.set(0.8, (d - 2) * 0.45, 0);
+          dense.add(dn);
+        }
+        stage3.add(dense);
+        this.stageGroups.push(stage3);
+
+        // 4. Simulator Stage (Interactive Tomato Plant + Water Pump + Spray)
+        const stage4 = new THREE.Group();
+        const pot = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 0.9, 1.4, 24), new THREE.MeshStandardMaterial({ color: 0x334155 }));
+        pot.position.y = -1.1;
+        stage4.add(pot);
+
+        this.simSoilMat = new THREE.MeshStandardMaterial({ color: 0x451a03 });
+        const soil = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.15, 0.2, 24), this.simSoilMat);
+        soil.position.y = -0.4;
+        stage4.add(soil);
+
+        this.plantGroup = new THREE.Group();
+        const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 1.8, 12), new THREE.MeshStandardMaterial({ color: 0x15803d }));
+        stem.position.y = 0.5;
+        this.plantGroup.add(stem);
+
+        this.simLeaves = [];
+        const leafOffsets = [[-0.35, 0.4, 0.2], [0.4, 0.7, -0.2], [-0.3, 1.1, -0.1], [0.35, 1.3, 0.2]];
+        leafOffsets.forEach(pos => {
+          const leafGeo = new THREE.SphereGeometry(0.35, 12, 12);
+          leafGeo.scale(1.2, 0.15, 2.0);
+          const leafMat = new THREE.MeshStandardMaterial({ color: 0x22c55e, side: THREE.DoubleSide });
+          const leafMesh = new THREE.Mesh(leafGeo, leafMat);
+          leafMesh.position.set(...pos);
+          this.plantGroup.add(leafMesh);
+          this.simLeaves.push(leafMesh);
+        });
+
+        // Tomato fruit
+        const tomato = new THREE.Mesh(new THREE.SphereGeometry(0.18, 16, 16), new THREE.MeshStandardMaterial({ color: 0xef4444 }));
+        tomato.position.set(0.2, 0.9, 0.3);
+        this.plantGroup.add(tomato);
+        stage4.add(this.plantGroup);
+
+        // Water Pump
+        const pump = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.5, 0.5), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+        pump.position.set(1.8, -0.9, 0);
+        stage4.add(pump);
+
+        // Water Spray Particles
+        const sprayCount = 120;
+        const sprayGeo = new THREE.BufferGeometry();
+        this.sprayPos = new Float32Array(sprayCount * 3);
+        this.sprayVels = [];
+        for (let i = 0; i < sprayCount; i++) {
+          this.sprayPos[i * 3] = 0.7;
+          this.sprayPos[i * 3 + 1] = -0.35;
+          this.sprayPos[i * 3 + 2] = 0.15;
+          this.sprayVels.push({ vx: -0.04 - Math.random() * 0.03, vy: -0.01, vz: (Math.random() - 0.5) * 0.03, life: Math.random() });
+        }
+        sprayGeo.setAttribute('position', new THREE.BufferAttribute(this.sprayPos, 3));
+        this.waterSpray = new THREE.Points(sprayGeo, new THREE.PointsMaterial({ color: 0x60a5fa, size: 0.1, transparent: true, opacity: 0.85 }));
+        this.waterSpray.visible = false;
+        stage4.add(this.waterSpray);
+        this.isPumpActive = false;
+
+        this.stageGroups.push(stage4);
+
+        // 5. Novelty Stage (Comparative Pillars)
+        const stage5 = new THREE.Group();
+        const p1 = new THREE.Mesh(new THREE.BoxGeometry(1, 1.2, 1), new THREE.MeshStandardMaterial({ color: 0x64748b }));
+        p1.position.set(-1.8, -0.6, 0);
+        stage5.add(p1);
+        const p2 = new THREE.Mesh(new THREE.BoxGeometry(1, 1.8, 1), new THREE.MeshStandardMaterial({ color: 0x0284c7 }));
+        p2.position.set(0, -0.3, 0);
+        stage5.add(p2);
+        const p3 = new THREE.Mesh(new THREE.BoxGeometry(1, 2.6, 1), new THREE.MeshStandardMaterial({ color: 0x10b981 }));
+        p3.position.set(1.8, 0.1, 0);
+        stage5.add(p3);
+        this.stageGroups.push(stage5);
+
+        // 6. Drone Stage (Autonomous Quadcopter)
+        const stage6 = new THREE.Group();
+        const terrain = new THREE.Mesh(new THREE.PlaneGeometry(5, 5, 16, 16), new THREE.MeshStandardMaterial({ color: 0x065f46, wireframe: true }));
+        terrain.rotation.x = -Math.PI / 2.3;
+        terrain.position.y = -1.2;
+        stage6.add(terrain);
+        const drone = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.2, 0.8), new THREE.MeshStandardMaterial({ color: 0x0f172a }));
+        drone.position.set(0, 0.9, 0);
+        stage6.add(drone);
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(1.6, 2.2, 24, 1, true), new THREE.MeshBasicMaterial({ color: 0x10b981, transparent: true, opacity: 0.35, side: THREE.DoubleSide }));
+        cone.rotation.x = Math.PI;
+        cone.position.set(0, -0.2, 0);
+        stage6.add(cone);
+        this.droneGroup = stage6;
+        this.stageGroups.push(stage6);
+
+        // 7. Conclusion Stage (Trophy Laurel)
+        const stage7 = new THREE.Group();
+        const laurel = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.08, 16, 48), new THREE.MeshStandardMaterial({ color: 0xf59e0b, emissive: 0xd97706, metalness: 0.9 }));
+        laurel.position.set(0, 0.3, 0);
+        stage7.add(laurel);
+        const star = new THREE.Mesh(new THREE.OctahedronGeometry(0.5, 0), new THREE.MeshStandardMaterial({ color: 0x10b981, emissive: 0x059669 }));
+        star.position.set(0, 0.3, 0);
+        stage7.add(star);
+        this.laurelGroup = stage7;
+        this.stageGroups.push(stage7);
+
+        // Add all stage groups to scene positioned slightly left
+        this.stageGroups.forEach((stage, idx) => {
+          stage.position.set(-1.2, 0, 0);
+          stage.visible = (idx === 0);
+          this.scene.add(stage);
+        });
+
+        // Loop animation hooks
+        this.updatables.push((delta, elapsed) => {
+          globe.rotation.y = elapsed * 0.2;
+          arcs.rotation.x = elapsed * 0.15;
+          if (stage1.visible) beacon.rotation.y = elapsed * 2;
+          if (stage2.visible) esp.rotation.y = elapsed * 0.3;
+          if (stage3.visible) conv.rotation.y = Math.sin(elapsed * 1.5) * 0.15;
+          if (stage6.visible) drone.position.y = 0.9 + Math.sin(elapsed * 2.5) * 0.1;
+          if (stage7.visible) laurel.rotation.y = elapsed * 1.2;
+
+          // Water spray animation
+          if (this.isPumpActive && this.waterSpray.visible) {
+            const arr = this.waterSpray.geometry.attributes.position.array;
+            for (let i = 0; i < sprayCount; i++) {
+              const vel = this.sprayVels[i];
+              vel.life += delta * 2.5;
+              if (vel.life > 1.0) {
+                arr[i * 3] = 0.7;
+                arr[i * 3 + 1] = -0.35;
+                arr[i * 3 + 2] = 0.15;
+                vel.life = 0;
+              } else {
+                arr[i * 3] += vel.vx;
+                arr[i * 3 + 1] += vel.vy - 0.015;
+                arr[i * 3 + 2] += vel.vz;
+              }
+            }
+            this.waterSpray.geometry.attributes.position.needsUpdate = true;
+          }
+        });
+      }
+
+      setStage(index) {
+        this.stageGroups.forEach((stage, idx) => {
+          if (idx === index) {
+            stage.visible = true;
+            if (typeof gsap !== 'undefined') {
+              stage.scale.set(0.01, 0.01, 0.01);
+              gsap.to(stage.scale, { x: 1, y: 1, z: 1, duration: 0.8, ease: "back.out(1.5)" });
+            }
+          } else {
+            stage.visible = false;
+          }
+        });
+      }
+
+      updateSimulator3D(moisture, temp, diseaseId, pumpActive) {
+        this.isPumpActive = pumpActive;
+        if (this.waterSpray) this.waterSpray.visible = pumpActive;
+
+        if (this.simSoilMat) {
+          const ratio = Math.min(Math.max(moisture / 100, 0), 1);
+          const wetCol = new THREE.Color(0x271305);
+          const dryCol = new THREE.Color(0xa16207);
+          this.simSoilMat.color.copy(dryCol).lerp(wetCol, ratio);
+        }
+
+        if (this.simLeaves) {
+          this.simLeaves.forEach(leaf => {
+            if (diseaseId === "healthy") {
+              leaf.material.color.setHex(0x22c55e);
+            } else if (diseaseId === "early_blight") {
+              leaf.material.color.setHex(0x854d0e);
+            } else if (diseaseId === "late_blight") {
+              leaf.material.color.setHex(0x581c87);
+            } else if (diseaseId === "leaf_mold") {
+              leaf.material.color.setHex(0xca8a04);
+            }
+          });
+        }
+      }
+
+      onResize() {
+        this.width = window.innerWidth;
+        this.height = window.innerHeight;
+        this.camera.aspect = this.width / this.height;
+        this.camera.updateProjectionMatrix();
+        this.renderer.setSize(this.width, this.height);
+      }
+
+      render() {
+        const delta = this.clock.getDelta();
+        const elapsed = this.clock.getElapsedTime();
+        for (let i = 0; i < this.updatables.length; i++) {
+          this.updatables[i](delta, elapsed);
+        }
+        this.renderer.render(this.scene, this.camera);
+        requestAnimationFrame(this.render.bind(this));
+      }
+    }
+
+    /* ==========================================================
+       VOICE NARRATOR CONTROLLER
+    ========================================================== */
+    class AgriAINarrator {
+      constructor(options) {
+        this.synth = window.speechSynthesis || null;
+        this.isMuted = false;
+        this.subtitleEl = options.subtitleEl;
+        this.avatarEmotionEl = options.avatarEmotionEl;
+        this.audioWaveEl = options.audioWaveEl;
+        this.onStart = options.onStart;
+        this.onEnd = options.onEnd;
+        this.typewriterTimer = null;
+      }
+
+      speak(text, emotion) {
+        this.stop();
+        this.renderSubtitles(text);
+
+        if (this.avatarEmotionEl) {
+          this.avatarEmotionEl.textContent = emotion.toUpperCase();
+          this.avatarEmotionEl.className = `avatar-emotion emotion-${emotion}`;
+        }
+
+        if (!this.synth || this.isMuted || !text) return;
+
+        try {
+          const utter = new SpeechSynthesisUtterance(text);
+          utter.rate = 1.05;
+          utter.pitch = 1.1;
+
+          utter.onstart = () => {
+            if (this.onStart) this.onStart(emotion);
+            if (this.audioWaveEl) this.audioWaveEl.classList.add("active");
+          };
+
+          utter.onend = () => {
+            if (this.onEnd) this.onEnd();
+            if (this.audioWaveEl) this.audioWaveEl.classList.remove("active");
+          };
+
+          utter.onerror = () => {
+            if (this.onEnd) this.onEnd();
+            if (this.audioWaveEl) this.audioWaveEl.classList.remove("active");
+          };
+
+          this.synth.speak(utter);
+        } catch (e) {}
+      }
+
+      stop() {
+        if (this.synth) this.synth.cancel();
+        if (this.typewriterTimer) clearInterval(this.typewriterTimer);
+        if (this.onEnd) this.onEnd();
+        if (this.audioWaveEl) this.audioWaveEl.classList.remove("active");
+      }
+
+      toggleMute() {
+        this.isMuted = !this.isMuted;
+        if (this.isMuted) this.stop();
+        return this.isMuted;
+      }
+
+      renderSubtitles(text) {
+        if (!this.subtitleEl) return;
+        this.subtitleEl.innerHTML = "";
+        let i = 0;
+        this.typewriterTimer = setInterval(() => {
+          if (i < text.length) {
+            this.subtitleEl.textContent += text.charAt(i);
+            i++;
+          } else {
+            clearInterval(this.typewriterTimer);
+          }
+        }, 18);
+      }
+    }
+
+    /* ==========================================================
+       APP CONTROLLER
+    ========================================================== */
+    class PresentationApp {
+      constructor() {
+        this.currentStage = 0;
+        this.laserActive = false;
+
+        // Simulator State
+        this.simState = {
+          temp: 38,
+          moisture: 22,
+          humidity: 35,
+          disease: "early_blight",
+          pumpActive: true
+        };
+
+        this.initDOM();
+        this.initScene();
+        this.initNarrator();
+        this.initLaser();
+        this.bindEvents();
+        this.goToStage(0);
+      }
+
+      initDOM() {
+        this.dom = {
+          container: document.getElementById('webgl-canvas-container'),
+          slideCard: document.getElementById('slide-card'),
+          slideTag: document.getElementById('slide-tag'),
+          slideBadge: document.getElementById('slide-badge'),
+          slideTitle: document.getElementById('slide-title'),
+          slideSubtitle: document.getElementById('slide-subtitle'),
+          slideBullets: document.getElementById('slide-bullets'),
+          metricsGrid: document.getElementById('metrics-grid'),
+          subtitleText: document.getElementById('subtitle-text'),
+          avatarEmotion: document.getElementById('avatar-emotion'),
+          audioWave: document.getElementById('audio-wave'),
+          btnVoice: document.getElementById('btn-voice-toggle'),
+          voiceIcon: document.getElementById('voice-icon'),
+          voiceLabel: document.getElementById('voice-label'),
+          btnLaser: document.getElementById('btn-laser-toggle'),
+          btnFull: document.getElementById('btn-fullscreen-toggle'),
+          btnNext: document.getElementById('btn-next-slide'),
+          btnPrev: document.getElementById('btn-prev-slide'),
+          timeline: document.getElementById('timeline-stepper'),
+          simPanel: document.getElementById('simulator-panel'),
+          sliderTemp: document.getElementById('slider-temp'),
+          sliderMoisture: document.getElementById('slider-moisture'),
+          sliderHumidity: document.getElementById('slider-humidity'),
+          valTemp: document.getElementById('val-temp'),
+          valMoisture: document.getElementById('val-moisture'),
+          valHumidity: document.getElementById('val-humidity'),
+          simOverallRisk: document.getElementById('sim-overall-risk'),
+          simPumpDot: document.getElementById('sim-pump-dot'),
+          simPumpLabel: document.getElementById('sim-pump-label'),
+          simRecommendation: document.getElementById('sim-recommendation')
+        };
+      }
+
+      initScene() {
+        this.scene = new AgriAIScene(this.dom.container);
+        this.scene.render();
+      }
+
+      initNarrator() {
+        this.narrator = new AgriAINarrator({
+          subtitleEl: this.dom.subtitleText,
+          avatarEmotionEl: this.dom.avatarEmotion,
+          audioWaveEl: this.dom.audioWave,
+          onStart: (emotion) => {
+            this.scene.isSpeaking = true;
+            this.scene.setAvatarEmotion(emotion);
+          },
+          onEnd: () => {
+            this.scene.isSpeaking = false;
+          }
+        });
+      }
+
+      initLaser() {
+        this.laserDot = document.createElement('div');
+        this.laserDot.className = 'classroom-laser-pointer';
+        this.laserDot.style.display = 'none';
+        document.body.appendChild(this.laserDot);
+
+        window.addEventListener('mousemove', (e) => {
+          if (this.laserActive) {
+            this.laserDot.style.left = `${e.clientX}px`;
+            this.laserDot.style.top = `${e.clientY}px`;
+          }
+        });
+      }
+
+      toggleLaser() {
+        this.laserActive = !this.laserActive;
+        this.laserDot.style.display = this.laserActive ? 'block' : 'none';
+        document.body.classList.toggle('laser-mode-active', this.laserActive);
+        this.dom.btnLaser.classList.toggle('active', this.laserActive);
+      }
+
+      toggleFullscreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        } else if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+      }
+
+      toggleVoice() {
+        const isMuted = this.narrator.toggleMute();
+        this.dom.btnVoice.classList.toggle('active', !isMuted);
+        this.dom.voiceIcon.textContent = isMuted ? '🔇' : '🔊';
+        this.dom.voiceLabel.textContent = isMuted ? 'Voice: OFF' : 'Voice: ON';
+      }
+
+      bindEvents() {
+        this.dom.btnNext.addEventListener('click', () => this.nextStage());
+        this.dom.btnPrev.addEventListener('click', () => this.prevStage());
+        this.dom.btnVoice.addEventListener('click', () => this.toggleVoice());
+        this.dom.btnLaser.addEventListener('click', () => this.toggleLaser());
+        this.dom.btnFull.addEventListener('click', () => this.toggleFullscreen());
+
+        // Timeline dots
+        this.dom.timeline.querySelectorAll('.step-dot').forEach(dot => {
+          dot.addEventListener('click', (e) => {
+            const idx = parseInt(e.currentTarget.getAttribute('data-stage'), 10);
+            this.goToStage(idx);
+          });
+        });
+
+        // Sliders
+        this.dom.sliderTemp.addEventListener('input', (e) => {
+          this.simState.temp = parseInt(e.target.value, 10);
+          this.computeSimulation();
+        });
+        this.dom.sliderMoisture.addEventListener('input', (e) => {
+          this.simState.moisture = parseInt(e.target.value, 10);
+          this.computeSimulation();
+        });
+        this.dom.sliderHumidity.addEventListener('input', (e) => {
+          this.simState.humidity = parseInt(e.target.value, 10);
+          this.computeSimulation();
+        });
+
+        // Preset buttons
+        this.dom.simPanel.querySelectorAll('.preset-btn').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const p = e.currentTarget.getAttribute('data-preset');
+            if (p === 'normal') {
+              this.simState.temp = 26; this.simState.moisture = 65; this.simState.humidity = 60; this.simState.disease = 'healthy';
+            } else if (p === 'drought') {
+              this.simState.temp = 39; this.simState.moisture = 18; this.simState.humidity = 30; this.simState.disease = 'healthy';
+            } else if (p === 'early_blight') {
+              this.simState.temp = 38; this.simState.moisture = 22; this.simState.humidity = 35; this.simState.disease = 'early_blight';
+            } else if (p === 'late_blight') {
+              this.simState.temp = 22; this.simState.moisture = 45; this.simState.humidity = 88; this.simState.disease = 'late_blight';
+            }
+            this.syncSliderUI();
+            this.computeSimulation();
+          });
+        });
+
+        // Disease chips
+        const chips = this.dom.simPanel.querySelectorAll('.disease-chip');
+        chips.forEach(chip => {
+          chip.addEventListener('click', (e) => {
+            chips.forEach(c => c.classList.remove('active'));
+            e.currentTarget.classList.add('active');
+            this.simState.disease = e.currentTarget.getAttribute('data-disease');
+            this.computeSimulation();
+          });
+        });
+
+        // Keyboard navigation
+        window.addEventListener('keydown', (e) => {
+          if (e.key === ' ' || e.key === 'ArrowRight' || e.key === 'PageDown') {
+            e.preventDefault();
+            this.nextStage();
+          } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+            e.preventDefault();
+            this.prevStage();
+          } else if (e.key === 'l' || e.key === 'L') {
+            e.preventDefault();
+            this.toggleLaser();
+          } else if (e.key === 'f' || e.key === 'F') {
+            e.preventDefault();
+            this.toggleFullscreen();
+          } else if (e.key === 'v' || e.key === 'V') {
+            e.preventDefault();
+            this.toggleVoice();
+          } else if (e.key >= '1' && e.key <= '8') {
+            this.goToStage(parseInt(e.key, 10) - 1);
+          }
+        });
+      }
+
+      syncSliderUI() {
+        this.dom.sliderTemp.value = this.simState.temp;
+        this.dom.sliderMoisture.value = this.simState.moisture;
+        this.dom.sliderHumidity.value = this.simState.humidity;
+        const chips = this.dom.simPanel.querySelectorAll('.disease-chip');
+        chips.forEach(c => c.classList.toggle('active', c.getAttribute('data-disease') === this.simState.disease));
+      }
+
+      computeSimulation() {
+        const { temp, moisture, disease } = this.simState;
+        this.dom.valTemp.textContent = `${temp}°C`;
+        this.dom.valMoisture.textContent = `${moisture}%`;
+        this.dom.valHumidity.textContent = `${this.simState.humidity}%`;
+
+        // ML Closed-Loop Actuation Logic
+        const pumpActive = moisture < 28 || (moisture < 42 && temp >= 35);
+        this.simState.pumpActive = pumpActive;
+
+        const diseaseInfo = LEAF_DISEASE_SAMPLES.find(d => d.id === disease) || LEAF_DISEASE_SAMPLES[0];
+
+        if (disease !== 'healthy' && pumpActive) {
+          this.dom.simOverallRisk.textContent = 'HIGH RISK (DISEASE + WATER STRESS)';
+          this.dom.simOverallRisk.style.color = '#ef4444';
+          this.dom.simRecommendation.textContent = `Irrigation ACTIVE. Detected ${diseaseInfo.name} (${diseaseInfo.confidence}%). ${diseaseInfo.action}`;
+        } else if (disease !== 'healthy') {
+          this.dom.simOverallRisk.textContent = 'DISEASE ALERT';
+          this.dom.simOverallRisk.style.color = '#f59e0b';
+          this.dom.simRecommendation.textContent = `Detected ${diseaseInfo.name} (${diseaseInfo.confidence}%). ${diseaseInfo.action}`;
+        } else if (pumpActive) {
+          this.dom.simOverallRisk.textContent = 'WATER STRESS (PUMP ON)';
+          this.dom.simOverallRisk.style.color = '#ef4444';
+          this.dom.simRecommendation.textContent = 'Soil moisture deficient. ESP32 relay automatically triggered water pump.';
+        } else {
+          this.dom.simOverallRisk.textContent = 'HEALTHY (NOMINAL)';
+          this.dom.simOverallRisk.style.color = '#10b981';
+          this.dom.simRecommendation.textContent = 'Crop health nominal. Continue multi-sensor edge monitoring.';
+        }
+
+        this.dom.simPumpDot.className = `status-dot ${pumpActive ? 'active-pump' : ''}`;
+        this.dom.simPumpLabel.textContent = pumpActive ? 'PUMP: ACTIVE (RELAY ON)' : 'PUMP: STANDBY (RELAY OFF)';
+        this.dom.simPumpLabel.style.color = pumpActive ? '#ef4444' : '#10b981';
+
+        this.scene.updateSimulator3D(moisture, temp, disease, pumpActive);
+      }
+
+      nextStage() {
+        if (this.currentStage < PRESENTATION_STAGES.length - 1) {
+          this.goToStage(this.currentStage + 1);
+        } else {
+          this.celebrate();
+        }
+      }
+
+      prevStage() {
+        if (this.currentStage > 0) {
+          this.goToStage(this.currentStage - 1);
+        }
+      }
+
+      goToStage(idx) {
+        if (idx < 0 || idx >= PRESENTATION_STAGES.length) return;
+        this.currentStage = idx;
+        const data = PRESENTATION_STAGES[idx];
+
+        // Timeline dots
+        this.dom.timeline.querySelectorAll('.step-dot').forEach((d, i) => {
+          d.classList.toggle('active', i === idx);
+        });
+
+        // Slide Content Card
+        this.dom.slideTag.textContent = data.tag;
+        this.dom.slideBadge.textContent = data.badge;
+        this.dom.slideTitle.textContent = data.title;
+        this.dom.slideSubtitle.textContent = data.subtitle;
+
+        this.dom.slideBullets.innerHTML = data.summary.map(b => `<li>${b}</li>`).join('');
+        this.dom.metricsGrid.innerHTML = data.metrics.map(m => `
+          <div class="metric-box">
+            <div class="metric-val">${m.val}</div>
+            <div class="metric-label">${m.label}</div>
+          </div>
+        `).join('');
+
+        // Switch 3D Stage
+        this.scene.setStage(idx);
+
+        // Narrator Voice & Avatar Emotion
+        this.scene.setAvatarEmotion(data.avatarEmotion);
+        this.narrator.speak(data.speech, data.avatarEmotion);
+
+        // Simulator panel on stage 4
+        this.dom.simPanel.classList.toggle('active', idx === 4);
+        if (idx === 4) {
+          this.computeSimulation();
+        }
+
+        // Celebration confetti on stage 7
+        if (idx === 7) {
+          this.celebrate();
+        }
+
+        this.dom.btnPrev.disabled = (idx === 0);
+        this.dom.btnNext.textContent = (idx === PRESENTATION_STAGES.length - 1) ? 'Finish & Celebrate 🎉' : 'Next Stage →';
+      }
+
+      celebrate() {
+        if (typeof confetti !== 'undefined') {
+          confetti({ particleCount: 120, spread: 80, origin: { y: 0.6 } });
+          setTimeout(() => {
+            confetti({ particleCount: 80, angle: 60, spread: 55, origin: { x: 0 } });
+            confetti({ particleCount: 80, angle: 120, spread: 55, origin: { x: 1 } });
+          }, 300);
+        }
+      }
+    }
+
+    // Launch standalone app
+    window.addEventListener('DOMContentLoaded', () => {
+      new PresentationApp();
+    });
+  </script>
+</body>
+</html>
